@@ -3029,38 +3029,12 @@ class Joomla_Sniffs_Deprecated_DeprecatedClassesSniff extends Generic_Sniffs_PHP
 			return;
 		}
 
-		$class = strtolower($tokens[$stackPtr]['content']);
-		$pattern  = null;
+		$pattern = strtolower($tokens[$stackPtr]['content']);
 
-		if ($this->patternMatch === true)
+		if (isset($this->forbiddenFunctions[$pattern]))
 		{
-			$count   = 0;
-			$pattern = preg_replace(
-				$this->forbiddenFunctionNames,
-				$this->forbiddenFunctionNames,
-				$class,
-				1,
-				$count
-			);
-
-			if ($count === 0)
-			{
-				return;
-			}
-
-			// Remove the pattern delimiters and modifier.
-			$pattern = substr($pattern, 1, -2);
+			$this->addError($phpcsFile, $stackPtr, $tokens[$stackPtr]['content'], $pattern);
 		}
-		else
-		{
-			if (in_array($class, $this->forbiddenFunctionNames) === false)
-			{
-				return;
-			}
-		}
-
-		$this->addError($phpcsFile, $stackPtr, $tokens[$stackPtr]['content'], $pattern);
-
 	}
 
 	/**
@@ -3077,11 +3051,6 @@ class Joomla_Sniffs_Deprecated_DeprecatedClassesSniff extends Generic_Sniffs_PHP
 	{
 		$versionCheck = false;
 		$error = 'The use of class ' . $class . ' is ';
-
-		if ($pattern === null)
-		{
-			$pattern = strtolower($class);
-		}
 
 		$this->error = false;
 
@@ -3119,7 +3088,17 @@ class Joomla_Sniffs_Deprecated_DeprecatedClassesSniff extends Generic_Sniffs_PHP
 				$error .= '; Use ' . $this->forbiddenFunctions[$pattern]['alternative'] . ' instead.';
 			}
 
-			if ($this->error === true)
+			// Check alternative for name spaced solution (alternative starts with \)
+			if (substr($this->forbiddenFunctions[$pattern]['alternative'], 0, 1) == '\\')
+			{
+				$fix = $phpcsFile->addFixableError($error, $stackPtr, 'NameSpacedClass');
+
+				if ($fix === true)
+				{
+					$phpcsFile->fixer->replaceToken($stackPtr, $this->forbiddenFunctions[$pattern]['alternative']);
+				}
+			}
+			elseif ($this->error === true)
 			{
 				$phpcsFile->addError($error, $stackPtr);
 			}
