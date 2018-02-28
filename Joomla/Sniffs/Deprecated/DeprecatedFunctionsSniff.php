@@ -1897,7 +1897,17 @@ class Joomla_Sniffs_Deprecated_DeprecatedFunctionsSniff extends Generic_Sniffs_P
 											'4.0' => true,
 											'alternative' => "Use isClient('administrator') instead."
 										),
+										'isAdmin' => array(
+											'4.0' => false,
+											'4.0' => true,
+											'alternative' => "Use isClient('administrator') instead."
+										),
 										'\Joomla\CMS\Application\CMSApplication::isSite()' => array(
+											'4.0' => false,
+											'4.0' => true,
+											'alternative' => "Use isClient('site') instead."
+										),
+										'isSite' => array(
 											'4.0' => false,
 											'4.0' => true,
 											'alternative' => "Use isClient('site') instead."
@@ -3078,38 +3088,19 @@ class Joomla_Sniffs_Deprecated_DeprecatedFunctionsSniff extends Generic_Sniffs_P
 			return;
 		}
 
-		$function = strtolower($tokens[$stackPtr]['content']);
-		$pattern  = null;
+		$pattern = strtolower($tokens[$stackPtr]['content']);
+		$function = $tokens[$stackPtr]['content'];
 
-		if ($this->patternMatch === true)
+		if ($tokens[$stackPtr]['type'] == 'T_DOUBLE_COLON')
 		{
-			$count   = 0;
-			$pattern = preg_replace(
-				$this->forbiddenFunctionNames,
-				$this->forbiddenFunctionNames,
-				$function,
-				1,
-				$count
-			);
-
-			if ($count === 0)
-			{
-				return;
-			}
-
-			// Remove the pattern delimiters and modifier.
-			$pattern = substr($pattern, 1, -2);
-		}
-		else
-		{
-			if (in_array($function, $this->forbiddenFunctionNames) === false)
-			{
-				return;
-			}
+			$pattern = strtolower($tokens[$stackPtr - 1]['content'] . $tokens[$stackPtr]['content'] . $tokens[$stackPtr + 1]['content'] . '()');
+			$function = $tokens[$stackPtr - 1]['content'] . $tokens[$stackPtr]['content'] . $tokens[$stackPtr + 1]['content'] . '()';
 		}
 
-		$this->addError($phpcsFile, $stackPtr, $tokens[$stackPtr]['content'], $pattern);
-
+		if (isset($this->forbiddenFunctions[$pattern]))
+		{
+			$this->addError($phpcsFile, $stackPtr, $function, $pattern);
+		}
 	}
 
 	/**
@@ -3125,12 +3116,7 @@ class Joomla_Sniffs_Deprecated_DeprecatedFunctionsSniff extends Generic_Sniffs_P
 	protected function addError($phpcsFile, $stackPtr, $function, $pattern=null)
 	{
 		$versionCheck = false;
-		$error = 'The use of function ' . $function . ' is ';
-
-		if ($pattern === null)
-		{
-			$pattern = strtolower($function);
-		}
+		$error = 'Function ' . $function . ' is ';
 
 		$this->error = false;
 
